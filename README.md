@@ -1,5 +1,5 @@
 
-# emq_kafka_bridge
+# emqx_kafka_bridge
 
 This is a plugin for the EMQ broker that sends all messages received by the broker to kafka.
 
@@ -17,19 +17,19 @@ This is a plugin for the EMQ broker that sends all messages received by the brok
    Adding EMQ kafka bridge as a dependency in the Makefile.
 
    1. search for `DEPS +=` and add to the end
-      > emq_kafka_bridge
+      > emqx_kafka_bridge
 
    2. search for
      ```text
      # COVER = true
-     #NO_AUTOPATCH = emq_elixir_plugin
+     #NO_AUTOPATCH = emqx_elixir_plugin
      include erlang.mk
      ```
      add the following line before the above lines
-     >dep_emq_kafka_bridge = git https://github.com/iotblue/emq_kafka_bridge.git master
+     >dep_emqx_kafka_bridge = git https://github.com/iotblue/emqx_kafka_bridge.git master
 
 3. Add load plugin in relx.config
-   >{emq_kafka_bridge, load},
+   >{emqx_kafka_bridge, load},
 
 4. Build
    ```shell
@@ -40,7 +40,7 @@ Configuration
 ----------------------
 You will have to edit the configurations of the bridge to set the kafka Ip address and port.
 
-Edit the file emq-relx/deps/emq_kafka_bridge/etc/emq_kafka_bridge.conf
+Edit the file emq-relx/deps/emqx_kafka_bridge/etc/emqx_kafka_bridge.conf
 
 ```conf
 ##--------------------------------------------------------------------

@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_kafka_bridge_app).
+-module(emqx_kafka_bridge_app).
 
 -behaviour(application).
 
@@ -22,14 +22,10 @@
 -export([start/2, stop/1]).
 
 start(_StartType, _StartArgs) ->
-    {ok, Sup} = emq_kafka_bridge_sup:start_link(),
-    % ok = emq_access_control:register_mod(auth, emq_auth_emq_kafka_bridge, []),
-    % ok = emq_access_control:register_mod(acl, emq_acl_emq_kafka_bridge, []),
-    emq_kafka_bridge:load(application:get_all_env()),
+    {ok, Sup} = emqx_kafka_bridge_sup:start_link(),
+    emqx_kafka_bridge:load(application:get_all_env()),
     {ok, Sup}.
 
 stop(_State) ->
-    % ok = emq_access_control:unregister_mod(auth, emq_auth_emq_kafka_bridge),
-    % ok = emq_access_control:unregister_mod(acl, emq_acl_emq_kafka_bridge),
-    emq_kafka_bridge:unload().
+    emqx_kafka_bridge:unload().
 

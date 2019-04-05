@@ -9,5 +9,5 @@ rel/example_project
 .concrete/DEV_MODE
 .rebar
 .erlang.mk/
-emq_kafka_bridge.d
+emqx_kafka_bridge.d
 /.idea
