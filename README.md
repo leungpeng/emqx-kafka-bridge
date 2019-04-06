@@ -1,77 +1,18 @@
 
-# emqx_kafka_bridge
+# EMQX kafka bridge
 
-This is a plugin for the EMQ broker that sends all messages received by the broker to kafka.
+This is a plugin for the EMQX broker that sends all messages received by the broker to kafka.
 
 ## Build the EMQ broker
 
-1. Clone emq-relx project
+1. Clone emqx-rel project
 
-   We need to clone the EMQ-x project [GITHUB](https://github.com/emqtt/emq-relx)
+   We need to clone the EMQ-x project [GITHUB](https://github.com/emqx/emqx-rel)
 
 ```shell
-  git clone https://github.com/emqtt/emq-relx.git
+  git clone https://github.com/emqx/emqx-rel
 ```
-
-2. Add EMQ Kafka bridge as a DEPS
-   Adding EMQ kafka bridge as a dependency in the Makefile.
-
-   1. search for `DEPS +=` and add to the end
-      > emqx_kafka_bridge
-
-   2. search for
-     ```text
-     # COVER = true
-     #NO_AUTOPATCH = emqx_elixir_plugin
-     include erlang.mk
-     ```
-     add the following line before the above lines
-     >dep_emqx_kafka_bridge = git https://github.com/iotblue/emqx_kafka_bridge.git master
-
-3. Add load plugin in relx.config
-   >{emqx_kafka_bridge, load},
-
-4. Build
-   ```shell
-   cd emq-relx && make
-   ```
-
-Configuration
-----------------------
-You will have to edit the configurations of the bridge to set the kafka Ip address and port.
-
-Edit the file emq-relx/deps/emqx_kafka_bridge/etc/emqx_kafka_bridge.conf
-
-```conf
-##--------------------------------------------------------------------
-## kafka Bridge
-##--------------------------------------------------------------------
-
-## The Kafka loadbalancer node host that bridge is listening on.
-##
-## Value: 127.0.0.1, localhost
-kafka.host = 127.0.0.1
-
-## The kafka loadbalancer node port that bridge is listening on.
-##
-## Value: Port
-kafka.port = 9092
-
-## The kafka loadbalancer node partition strategy.
-##
-## Value: strict_round_robin
-kafka.partitionstrategy = strict_round_robin
-
-## payload topic.
-##
-## Value: string
-kafka.payloadtopic = Processing
-
-## event topic.
-##
-## Value: File
-kafka.eventstopic = Events
-```
+Documentaion is not complete yet.
 
 Start the EMQ broker and load the plugin 
 -----------------
