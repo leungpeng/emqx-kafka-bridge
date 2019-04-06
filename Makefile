@@ -2,15 +2,16 @@ PROJECT = emqx_kafka_bridge
 PROJECT_DESCRIPTION = EMQ X Kafka Bridge
 PROJECT_VERSION = 3.0
 
-DEPS = ekaf
+DEPS = ekaf ecpool
 dep_ekaf = git https://github.com/helpshift/ekaf master
+dep_ecpool  = git-emqx https://github.com/emqx/ecpool v0.3.0
 
-BUILD_DEPS = emqttd cuttlefish
+BUILD_DEPS = emqx cuttlefish
 dep_emqx = git-emqx https://github.com/emqx/emqx emqx30
 dep_cuttlefish = git-emqx https://github.com/emqx/cuttlefish v2.2.1
 
 ERLC_OPTS += +debug_info
-ERLC_OPTS += +'{parse_transform, lager_transform}'
+# ERLC_OPTS += +'{parse_transform, lager_transform}'
 # TEST_ERLC_OPTS += +'{parse_transform, lager_transform}'
 
 NO_AUTOPATCH = cuttlefish
