@@ -1,84 +1,18 @@
 
-# emq_kafka_bridge
+# EMQX kafka bridge
 
-This is a plugin for the EMQ broker that sends all messages received by the broker to kafka.
+This is a plugin for the EMQX broker that sends all messages received by the broker to kafka.
 
 ## Build the EMQ broker
 
-1. Clone emq-relx project
+1. Clone emqx-rel project
 
    We need to clone the EMQ-x project [GITHUB](https://github.com/emqx/emqx-rel)
 
 ```shell
   git clone https://github.com/emqx/emqx-rel
 ```
-
-2. Add EMQ Kafka bridge as a DEPS
-   Adding EMQ kafka bridge as a dependency in the Makefile.
-
-   1. search for `DEPS +=` and add to the end
-      > emq_kafka_bridge
-
-   2. search for
-     ```text
-     # COVER = true
-     #NO_AUTOPATCH = emq_elixir_plugin
-     include erlang.mk
-     ```
-     add the following line before the above lines
-     >dep_emq_kafka_bridge = git https://github.com/iotblue/emq_kafka_bridge.git {build version}
-
-3. Add load plugin in relx.config
-   >{emq_kafka_bridge, load},
-
-4. Build
-   ```shell
-   cd emq-relx && make
-   ```
-
-Configuration
-----------------------
-You will have to edit the configurations of the bridge to set the kafka Ip address and port.
-
-Edit the file emq-relx/deps/emq_kafka_bridge/etc/emq_kafka_bridge.conf
-
-```conf
-##--------------------------------------------------------------------
-## kafka Bridge
-##--------------------------------------------------------------------
-
-## The Kafka loadbalancer node host that bridge is listening on.
-##
-## Value: 127.0.0.1, localhost
-kafka.host = localhost
-
-## The kafka loadbalancer node port that bridge is listening on.
-##
-## Value: Port
-kafka.port = 9092
-
-## The kafka loadbalancer node partition strategy.
-##
-## Value: random, sticky_round_robin, strict_round_robin, custom
-kafka.partitionstrategy = random
-
-## Each worker represents a connection to a broker + topic + partition combination.
-## You can decide how many workers to start for each partition.
-##
-## Value: 
-kafka.partitionworkers = 2
-
-## payload topic.
-##
-## Value: string
-kafka.payloadtopic = Payload
-
-## event topic.
-##
-## Value: string
-kafka.eventtopic = Event
-
-```
+Documentaion is not complete yet.
 
 Start the EMQ broker and load the plugin 
 -----------------
