@@ -110,7 +110,12 @@ on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
 
 on_message_publish(Message, _Env) ->
     % io:format("Publish ~s~n", [emqx_message:format(Message)]),
-    {ok, Payload} = format_payload(Message),
+    % {ok, Payload} = format_payload(Message),
+    Payload = [{action, <<"message_publish">>}, 
+        {clientid, Message#message.from}, 
+        {topic, Message#message.topic},
+        {payload, Message#message.payload},
+        {time, emqx_time:now_secs(Message#message.timestamp)}],
     produce_kafka_payload(Payload, _Env),	
     {ok, Message}.
 
@@ -138,13 +143,13 @@ on_message_acked(#{client_id := ClientId}, Message, _Env) ->
 %     io:format("Message dropped by client ~s: ~s~n", [ClientId, emqx_message:format(Message)]).
 
 
-format_payload(Message) ->
-    Payload = [{action, <<"message_publish">>}, 
-        {clientid, Message#message.from}, 
-        {topic, Message#message.topic},
-        {payload, Message#message.payload},
-        {time, emqx_time:now_secs(Message#message.timestamp)}],
-    {ok, Payload}.
+% format_payload(Message) ->
+%     Payload = [{action, <<"message_publish">>}, 
+%         {clientid, Message#message.from}, 
+%         {topic, Message#message.topic},
+%         {payload, Message#message.payload},
+%         {time, emqx_time:now_secs(Message#message.timestamp)}],
+%     {ok, Payload}.
 
 produce_kafka_payload(Message, _Env) ->
     {ok, Topic} = application:get_env(emqx_kafka_bridge, kafka_payload_topic),
