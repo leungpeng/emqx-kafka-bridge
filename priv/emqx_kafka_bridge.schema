@@ -12,22 +12,37 @@
 ]}.
 
 {mapping, "kafka.partitionstrategy", "emqx_kafka_bridge.broker", [
-  {default, "strict_round_robin"},
+  {default, "random"},
   {datatype, string}
 ]}.
 
 {mapping, "kafka.partitionworkers", "emqx_kafka_bridge.broker", [
-  {default, 2},
+  {default, 4},
   {datatype, integer}
 ]}.
 
-{mapping, "kafka.payloadtopic", "emqx_kafka_bridge.broker", [
-  {default, "Payload"},
+{mapping, "kafka.publishtopic", "emqx_kafka_bridge.broker", [
+  {default, "message_publish"},
   {datatype, string}
 ]}.
 
-{mapping, "kafka.eventtopic", "emqx_kafka_bridge.broker", [
-  {default, "Event"},
+{mapping, "kafka.deliveredtopic", "emqx_kafka_bridge.broker", [
+  {default, "message_published"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.ackedtopic", "emqx_kafka_bridge.broker", [
+  {default, "message_acked"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.clientconnecttopic", "emqx_kafka_bridge.broker", [
+  {default, "client_connected"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.clientdisconnecttopic", "emqx_kafka_bridge.broker", [
+  {default, "client_disconnected"},
   {datatype, string}
 ]}.
 
@@ -36,7 +51,10 @@
   KafkaPort = cuttlefish:conf_get("kafka.port", Conf),
   KafkaPartitionStrategy = cuttlefish:conf_get("kafka.partitionstrategy", Conf),
   KafkaPartitionWorkers = cuttlefish:conf_get("kafka.partitionworkers", Conf),
-  KafkaPayloadTopic = cuttlefish:conf_get("kafka.payloadtopic", Conf),
-  KafkaEventTopic = cuttlefish:conf_get("kafka.eventtopic", Conf),
-  [{host, KafkaHost}, {port, KafkaPort}, {partitionstrategy, KafkaPartitionStrategy}, {partitionworkers, KafkaPartitionWorkers}, {payloadtopic, KafkaPayloadTopic}, {eventtopic, KafkaEventTopic}]
+  KafkaPublishTopic = cuttlefish:conf_get("kafka.publishtopic", Conf),
+  KafkaDeliveredTopic = cuttlefish:conf_get("kafka.deliveredtopic", Conf),
+  KafkaAckedTopic = cuttlefish:conf_get("kafka.ackedtopic", Conf),
+  KafkaClientConnectTopic = cuttlefish:conf_get("kafka.clientconnecttopic", Conf),
+  KafkaClientDisconnectTopic = cuttlefish:conf_get("kafka.clientdisconnecttopic", Conf),
+  [{host, KafkaHost}, {port, KafkaPort}, {partitionstrategy, KafkaPartitionStrategy}, {partitionworkers, KafkaPartitionWorkers}, {publishtopic, KafkaPublishTopic}, {deliveredtopic, KafkaDeliveredTopic}, {ackedtopic, KafkaAckedTopic}, {clientconnecttopic, KafkaClientConnectTopic}, {Clientdisconnecttopic, KafkaClientDisconnectTopic}]
   end}.

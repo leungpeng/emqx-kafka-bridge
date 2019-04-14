@@ -60,26 +60,32 @@ ekaf_init(_Env) ->
     KafkaPort = proplists:get_value(port, BrokerValues),
     KafkaPartitionStrategy= proplists:get_value(partitionstrategy, BrokerValues),
     KafkaPartitionWorkers= proplists:get_value(partitionworkers, BrokerValues),
-    KafkaPayloadTopic = proplists:get_value(payloadtopic, BrokerValues),
-    KafkaEventTopic = proplists:get_value(eventtopic, BrokerValues),
+    KafkaPublishTopic = proplists:get_value(publishtopic, BrokerValues),
+    KafkaDeliveredTopic = proplists:get_value(deliveredtopic, BrokerValues),
+    KafkaAckedTopic = proplists:get_value(ackedtopic, BrokerValues),
+    KafkaClientConnectTopic = proplists:get_value(clientconnecttopic, BrokerValues),
+    KafkaClientDisconnectTopic = proplists:get_value(clientdisconnecttopic, BrokerValues),
     application:set_env(ekaf, ekaf_bootstrap_broker,  {KafkaHost, list_to_integer(KafkaPort)}),
     application:set_env(ekaf, ekaf_partition_strategy, KafkaPartitionStrategy),
     application:set_env(ekaf, ekaf_per_partition_workers, KafkaPartitionWorkers),
     application:set_env(ekaf, ekaf_per_partition_workers_max, 10),
-    application:set_env(emqx_kafka_bridge, kafka_event_topic, KafkaEventTopic),
-    application:set_env(emqx_kafka_bridge, kafka_payload_topic, KafkaPayloadTopic),
+    application:set_env(emqx_kafka_bridge, kafka_publish_topic, KafkaPublishTopic),
+    application:set_env(emqx_kafka_bridge, kafka_delivered_topic, KafkaDeliveredTopic),
+    application:set_env(emqx_kafka_bridge, kafka_acked_topic, KafkaAckedTopic),
+    application:set_env(emqx_kafka_bridge, kafka_client_connect_topic, KafkaClientConnectTopic),
+    application:set_env(emqx_kafka_bridge, kafka_client_disconnect_topic, KafkaClientDisconnectTopic),
     {ok, _} = application:ensure_all_started(gproc),
     {ok, _} = application:ensure_all_started(ekaf).
 
 on_client_connected(#{client_id := ClientId}, ConnAck, ConnAttrs, _Env) ->
     % io:format("Client(~s) connected, connack: ~w, conn_attrs:~p~n", [ClientId, ConnAck, ConnAttrs]),
-    Event = [{action, <<"connected">>}, {clientid, ClientId}, {result, ConnAck}],
-    produce_kafka_log(Event, _Env).
+    Message = [{clientid, ClientId}, {result, ConnAck}],
+    produce_kafka_client_connected(Message, _Env).
 
 on_client_disconnected(#{client_id := ClientId}, ReasonCode, _Env) ->
     % io:format("Client(~s) disconnected, reason_code: ~w~n", [ClientId, ReasonCode]),
-    Event = [{action, <<"disconnected">>}, {clientid, ClientId}, {result, ReasonCode}],
-    produce_kafka_log(Event, _Env).
+    Message = [{clientid, ClientId}, {result, ReasonCode}],
+    produce_kafka_client_disconnected(Message, _Env).
 
 % on_client_subscribe(#{client_id := ClientId}, RawTopicFilters, _Env) ->
 %     io:format("Client(~s) will subscribe: ~p~n", [ClientId, RawTopicFilters]),
@@ -111,28 +117,25 @@ on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
 on_message_publish(Message, _Env) ->
     % io:format("Publish ~s~n", [emqx_message:format(Message)]),
     % {ok, Payload} = format_payload(Message),
-    Payload = [{action, <<"message_publish">>}, 
-        {clientid, Message#message.from}, 
+    Payload = [{clientid, Message#message.from}, 
         {topic, Message#message.topic},
         {payload, Message#message.payload},
         {time, emqx_time:now_secs(Message#message.timestamp)}],
-    produce_kafka_payload(Payload, _Env),	
+    produce_kafka_message_publish(Payload, _Env),	
     {ok, Message}.
 
 on_message_delivered(#{client_id := ClientId}, Message, _Env) ->
     io:format("Delivered message to client(~s): ~s~n", [ClientId, emqx_message:format(Message)]),
-    Event = [{action, <<"delivered">>},
-        {clientid, ClientId},
+    Event = [{clientid, ClientId},
         {message, emqx_message:format(Message)}],
-    produce_kafka_log(Event, _Env),
+        produce_kafka_message_delivered(Event, _Env),
     {ok, Message}.
 
 on_message_acked(#{client_id := ClientId}, Message, _Env) ->
     io:format("Session(~s) acked message: ~s~n", [ClientId, emqx_message:format(Message)]),
-    Event = [{action, <<"acked">>},
-        {clientid, ClientId},
+    Event = [{clientid, ClientId},
         {message, emqx_message:format(Message)}],
-    produce_kafka_log(Event, _Env),
+        produce_kafka_message_acked(Event, _Env),
     {ok, Message}.
 
 % on_message_dropped(_By, #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
@@ -140,25 +143,34 @@ on_message_acked(#{client_id := ClientId}, Message, _Env) ->
 % on_message_dropped(#{node := Node}, Message, _Env) ->
 %     io:format("Message dropped by node ~s: ~s~n", [Node, emqx_message:format(Message)]);
 % on_message_dropped(#{client_id := ClientId}, Message, _Env) ->
-%     io:format("Message dropped by client ~s: ~s~n", [ClientId, emqx_message:format(Message)]).
+%     io:format("Message dropped by client ~s: ~s~n", [ClientId, emqx_message:format(Message)]).   
 
-
-% format_payload(Message) ->
-%     Payload = [{action, <<"message_publish">>}, 
-%         {clientid, Message#message.from}, 
-%         {topic, Message#message.topic},
-%         {payload, Message#message.payload},
-%         {time, emqx_time:now_secs(Message#message.timestamp)}],
-%     {ok, Payload}.
-
-produce_kafka_payload(Message, _Env) ->
-    {ok, Topic} = application:get_env(emqx_kafka_bridge, kafka_payload_topic),
+produce_kafka_message_publish(Message, _Env) ->
+    {ok, Topic} = application:get_env(emqx_kafka_bridge, kafka_publish_topic),
     Payload = jsx:encode(Message),
     ok = ekaf:produce_async(list_to_binary(Topic), Payload),
-    ok.    
+    ok.
 
-produce_kafka_log(Message, _Env) ->
-    {ok, Topic} = application:get_env(emqx_kafka_bridge, kafka_event_topic),
+produce_kafka_message_delivered(Message, _Env) ->
+    {ok, Topic} = application:get_env(emqx_kafka_bridge, kafka_delivered_topic),
+    Payload = jsx:encode(Message),
+    ok = ekaf:produce_async(list_to_binary(Topic), Payload),
+    ok.
+
+produce_kafka_message_acked(Message, _Env) ->
+    {ok, Topic} = application:get_env(emqx_kafka_bridge, kafka_acked_topic),
+    Payload = jsx:encode(Message),
+    ok = ekaf:produce_async(list_to_binary(Topic), Payload),
+    ok.
+
+produce_kafka_client_connected(Message, _Env) ->
+    {ok, Topic} = application:get_env(emqx_kafka_bridge, kafka_client_connect_topic),
+    Payload = jsx:encode(Message),
+    ok = ekaf:produce_async(list_to_binary(Topic), Payload),
+    ok.
+
+produce_kafka_client_disconnected(Message, _Env) ->
+    {ok, Topic} = application:get_env(emqx_kafka_bridge, kafka_client_disconnect_topic),
     Payload = jsx:encode(Message),
     ok = ekaf:produce_async(list_to_binary(Topic), Payload),
     ok.
