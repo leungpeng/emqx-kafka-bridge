@@ -56,5 +56,5 @@
   KafkaAckedTopic = cuttlefish:conf_get("kafka.ackedtopic", Conf),
   KafkaClientConnectTopic = cuttlefish:conf_get("kafka.clientconnecttopic", Conf),
   KafkaClientDisconnectTopic = cuttlefish:conf_get("kafka.clientdisconnecttopic", Conf),
-  [{host, KafkaHost}, {port, KafkaPort}, {partitionstrategy, KafkaPartitionStrategy}, {partitionworkers, KafkaPartitionWorkers}, {publishtopic, KafkaPublishTopic}, {deliveredtopic, KafkaDeliveredTopic}, {ackedtopic, KafkaAckedTopic}, {clientconnecttopic, KafkaClientConnectTopic}, {Clientdisconnecttopic, KafkaClientDisconnectTopic}]
+  [{host, KafkaHost}, {port, KafkaPort}, {partitionstrategy, KafkaPartitionStrategy}, {partitionworkers, KafkaPartitionWorkers}, {publishtopic, KafkaPublishTopic}, {deliveredtopic, KafkaDeliveredTopic}, {ackedtopic, KafkaAckedTopic}, {clientconnecttopic, KafkaClientConnectTopic}, {clientdisconnecttopic, KafkaClientDisconnectTopic}]
   end}.
