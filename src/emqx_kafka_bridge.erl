@@ -80,7 +80,9 @@ ekaf_init(_Env) ->
 on_client_connected(#{client_id := ClientId}, ConnAck, ConnAttrs, _Env) ->
     % io:format("Client(~s) connected, connack: ~w, conn_attrs:~p~n", [ClientId, ConnAck, ConnAttrs]),
     Message = [{clientid, ClientId}, {result, ConnAck}],
-    produce_kafka_client_connected(Message, _Env).
+    if
+        ConnAck == 0 ->  produce_kafka_client_connected(Message, _Env)
+    end.
 
 on_client_disconnected(#{client_id := ClientId}, ReasonCode, _Env) ->
     % io:format("Client(~s) disconnected, reason_code: ~w~n", [ClientId, ReasonCode]),
