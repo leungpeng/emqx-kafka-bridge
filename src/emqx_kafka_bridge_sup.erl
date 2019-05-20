@@ -29,4 +29,4 @@ start_link() ->
 init([]) ->
     % {ok, PoolEnv} = application:get_env(?APP, broker),
     % PoolSpec = ecpool:pool_spec(?APP, ?APP, ?APP, PoolEnv),
-    {ok, {{one_for_all, 10, 3600}, []}}.
+    {ok, {{one_for_one, 10, 3600}, []}}.
