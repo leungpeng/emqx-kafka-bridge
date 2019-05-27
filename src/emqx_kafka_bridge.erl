@@ -144,9 +144,8 @@ on_message_publish(Message = #message{topic = Topic, from = From, headers = #{us
                 {clientid, a2b(From)},
                 {username, a2b(Username)},
                 {topic, Topic},
-                {payload, Message#message.payload},
-                {time, emqx_time:now_secs(Message#message.timestamp)}],
-    produce_kafka_message(<<"message_publish">>, Params, _Env),	
+                {payload, Message#message.payload}],
+    produce_kafka_message_async(<<"message_publish">>, Params, _Env),	
     {ok, Message}.
 
 on_message_delivered(#{client_id := ClientId}, Message, _Env) ->
@@ -212,10 +211,16 @@ produce_kafka_message(Topic, Message, _Env) ->
     ekaf:pick(Topic),
     ekaf:produce_sync(Topic, Message1).
 
-% produce_kafka_message_async(Topic, Message, _Env) ->
-%     Message1 = jsx:encode(Message),
-%     ?LOG(debug, "Topic:~p, params:~s", [Topic, Message1]),
-%     ekaf:produce_async(Topic, Message1).
+produce_kafka_message_async(Topic, Message, _Env) ->
+    Message1 = jsx:encode(Message),
+    ?LOG(debug, "Topic:~p, params:~s", [Topic, Message1]),
+    ekaf:produce_async(Topic, Message1).
+
+% format_from(Message = #message{from = From}) ->
+%     format_from(Message#message{from = a2b(From)});
+% format_from(#message{from = ClientId, headers = #{username := Username}}) ->
+%     ?LOG(debug, "Client clientid: ~p, username: ~p~n", [ClientId, ClientId]),
+%     {a2b(ClientId), a2b(Username)}.
 
 a2b(A) when is_atom(A) -> erlang:atom_to_binary(A, utf8);
 a2b(A) -> A.
