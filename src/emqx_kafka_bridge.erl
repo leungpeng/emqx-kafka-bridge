@@ -18,7 +18,7 @@
 
 -module(emqx_kafka_bridge).
 
-% -include("emqx_kafka_bridge.hrl").
+-include("emqx_kafka_bridge.hrl").
 
 -include_lib("emqx/include/emqx.hrl").
 
@@ -26,6 +26,8 @@
 % -import(lists,[nth/2]). 
 
 -export([load/1, unload/0]).
+
+-behaviour(ecpool_worker).
 
 %% Hooks functions
 -export([on_client_connected/4, on_client_disconnected/3]).
@@ -68,20 +70,10 @@ ekaf_init(_Env) ->
     application:set_env(ekaf, ekaf_partition_strategy, KafkaPartitionStrategy),
     application:set_env(ekaf, ekaf_per_partition_workers, KafkaPartitionWorkers),
     application:set_env(ekaf, ekaf_per_partition_workers_max, 100),
-    application:set_env(ekaf, ekaf_max_buffer_size, 100),
-    application:set_env(ekaf, ekaf_buffer_ttl, 5000),
-    application:set_env(ekaf, ekaf_max_downtime_buffer_size, 5),
-    % KafkaPublishTopic = proplists:get_value(publishtopic, BrokerValues),
-    % KafkaDeliveredTopic = proplists:get_value(deliveredtopic, BrokerValues),
-    % KafkaAckedTopic = proplists:get_value(ackedtopic, BrokerValues),
-    % KafkaClientConnectTopic = proplists:get_value(clientconnecttopic, BrokerValues),
-    % KafkaClientDisconnectTopic = proplists:get_value(clientdisconnecttopic, BrokerValues),
-    % application:set_env(emqx_kafka_bridge, kafka_publish_topic, KafkaPublishTopic),
-    % application:set_env(emqx_kafka_bridge, kafka_delivered_topic, KafkaDeliveredTopic),
-    % application:set_env(emqx_kafka_bridge, kafka_acked_topic, KafkaAckedTopic),
-    % application:set_env(emqx_kafka_bridge, kafka_client_connect_topic, KafkaClientConnectTopic),
-    % application:set_env(emqx_kafka_bridge, kafka_client_disconnect_topic, KafkaClientDisconnectTopic),
-    % {ok, _} = application:ensure_all_started(gproc),
+    application:set_env(ekaf, ekaf_max_buffer_size, 1000),
+    application:set_env(ekaf, ekaf_buffer_ttl, 50000),
+    application:set_env(ekaf, ekaf_max_downtime_buffer_size, 50),
+    {ok, _} = application:ensure_all_started(gproc),
     {ok, _} = application:ensure_all_started(ekaf).
 
 % on_client_subscribe(#{client_id := ClientId}, RawTopicFilters, _Env) ->
@@ -136,13 +128,11 @@ on_client_disconnected(_, Reason, _Env) ->
 
 on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
     {ok, Message};
-on_message_publish(Message = #message{topic = Topic, from = From, headers = #{username := Username}, flags = #{retain := Retain}}, _Env) ->
+on_message_publish(Message = #message{topic = Topic, from = From, headers = #{username := Username}}, _Env) ->
     ?LOG(debug, "Client message: ~s~n", [emqx_message:format(Message)]),
-    % {FromClientId, FromUsername} = format_from(Message),
-    % ?LOG(debug, "Client clientid: ~p, username: ~p~n", [FromClientId, FromUsername]),
     Params = [{action, message_publish},
-                {clientid, a2b(From)},
-                {username, a2b(Username)},
+                {clientid, From},
+                {username, Username},
                 {topic, Topic},
                 {payload, Message#message.payload}],
     produce_kafka_message_async(<<"message_publish">>, Params, _Env),	
@@ -155,7 +145,7 @@ on_message_delivered(#{client_id := ClientId}, Message, _Env) ->
         {clientid, ClientId},
         {message, emqx_message:format(Message)}
     ]),
-    produce_kafka_message(<<"message_published">>, jsx:encode(Params), _Env),
+    produce_kafka_message_async(<<"message_published">>, jsx:encode(Params), _Env),
     {ok, Message}.
 
 on_message_acked(#{client_id := ClientId}, Message, _Env) ->
@@ -165,7 +155,7 @@ on_message_acked(#{client_id := ClientId}, Message, _Env) ->
         {clientid, ClientId},
         {message, emqx_message:format(Message)}
     ]),
-    produce_kafka_message(<<"message_acked">>, jsx:encode(Params), _Env),
+    produce_kafka_message_async(<<"message_acked">>, jsx:encode(Params), _Env),
     {ok, Message}.
 
 % on_message_dropped(_By, #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
@@ -214,13 +204,8 @@ produce_kafka_message(Topic, Message, _Env) ->
 produce_kafka_message_async(Topic, Message, _Env) ->
     Message1 = jsx:encode(Message),
     ?LOG(debug, "Topic:~p, params:~s", [Topic, Message1]),
+    ekaf:pick(Topic),
     ekaf:produce_async(Topic, Message1).
-
-% format_from(Message = #message{from = From}) ->
-%     format_from(Message#message{from = a2b(From)});
-% format_from(#message{from = ClientId, headers = #{username := Username}}) ->
-%     ?LOG(debug, "Client clientid: ~p, username: ~p~n", [ClientId, ClientId]),
-%     {a2b(ClientId), a2b(Username)}.
 
 a2b(A) when is_atom(A) -> erlang:atom_to_binary(A, utf8);
 a2b(A) -> A.
