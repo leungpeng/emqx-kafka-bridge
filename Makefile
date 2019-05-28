@@ -3,7 +3,7 @@ PROJECT_DESCRIPTION = EMQ X Kafka Bridge
 PROJECT_VERSION = 3.0
 
 DEPS = brod supervisor3
-dep_brod = git https://github.com/klarna/brod master
+dep_brod = git https://github.com/klarna/brod 3.7.9
 dep_supervisor3  = git-emqx https://github.com/klarna/supervisor3 1.1.8
 
 BUILD_DEPS = emqx cuttlefish
