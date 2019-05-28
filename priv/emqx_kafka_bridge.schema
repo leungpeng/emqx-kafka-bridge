@@ -1,30 +1,44 @@
 %%-*- mode: erlang -*-
 %% emqx_kafka_bridge config mapping
 
-{mapping, "kafka.host", "emqx_kafka_bridge.broker", [
+{mapping, "kafka.bootstrap_broker_host", "emqx_kafka_bridge.broker", [
   {default, "localhost"},
   {datatype, string}
 ]}.
-
-{mapping, "kafka.port", "emqx_kafka_bridge.broker", [
-  {default, "9092"},
-  {datatype, string}
+{mapping, "kafka.bootstrap_broker_port", "emqx_kafka_bridge.broker", [
+  {default, 9092},
+  {datatype, integer}
 ]}.
 
-{mapping, "kafka.partitionstrategy", "emqx_kafka_bridge.broker", [
-  {default, "random"},
-  {datatype, string}
+{mapping, "kafka.query_api_versions", "emqx_kafka_bridge.broker", [
+  {default, true},
+  {datatype, {enum, [true, false]}}
 ]}.
 
-{mapping, "kafka.partitionworkers", "emqx_kafka_bridge.broker", [
+{mapping, "kafka.reconnect_cool_down_seconds", "emqx_kafka_bridge.broker", [
+  {default, 10},
+  {datatype, integer}
+]}.
+
+{mapping, "kafka.producer_partition", "emqx_kafka_bridge.broker", [
   {default, 1},
   {datatype, integer}
 ]}.
 
-{translation, "emqx_kafka_bridge.broker", fun(Conf) ->
-  KafkaHost = cuttlefish:conf_get("kafka.host", Conf),
-  KafkaPort = cuttlefish:conf_get("kafka.port", Conf),
-  KafkaPartitionStrategy = cuttlefish:conf_get("kafka.partitionstrategy", Conf),
-  KafkaPartitionWorkers = cuttlefish:conf_get("kafka.partitionworkers", Conf),
-  [{host, KafkaHost}, {port, KafkaPort}, {partitionstrategy, KafkaPartitionStrategy}, {partitionworkers, KafkaPartitionWorkers}]
-  end}.
+{
+  translation, "emqx_kafka_bridge.broker", 
+    fun(Conf) ->
+      KafkaBootstrapBrokerHost = cuttlefish:conf_get("kafka.bootstrap_broker_host", Conf),
+      KafkaBootstrapBrokerPort = cuttlefish:conf_get("kafka.bootstrap_broker_port", Conf),
+      KafkaQueryApiVersions = cuttlefish:conf_get("kafka.query_api_versions", Conf),
+      KafkaReconnectCoolDownSeconds = cuttlefish:conf_get("kafka.reconnect_cool_down_seconds", Conf),
+      KafkaProducerPartition = cuttlefish:conf_get("kafka.producer_partition", Conf),
+      [
+        {bootstrap_broker_host, KafkaBootstrapBrokerHost}, 
+        {bootstrap_broker_port, KafkaBootstrapBrokerPort}, 
+        {query_api_versions, KafkaQueryApiVersions}, 
+        {reconnect_cool_down_seconds, KafkaReconnectCoolDownSeconds}, 
+        {producer_partition, KafkaProducerPartition}
+      ]
+    end
+}.

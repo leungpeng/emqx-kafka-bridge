@@ -20,16 +20,13 @@
 
 -include("emqx_kafka_bridge.hrl").
 
--include_lib("emqx/include/emqx.hrl").
+-include_lib("brod/include/brod_int.hrl").
 
-% -import(string,[concat/2]).
-% -import(lists,[nth/2]). 
+-include_lib("emqx/include/emqx.hrl").
 
 -export([load/1, unload/0]).
 
--behaviour(ecpool_worker).
-
-%% Hooks functions
+% Hooks functions
 -export([on_client_connected/4, on_client_disconnected/3]).
 -export([on_message_publish/2, on_message_delivered/3, on_message_acked/3]).
 % -export([on_client_subscribe/3, on_client_unsubscribe/3]).
@@ -44,7 +41,7 @@
 
 %% Called when the plugin application start
 load(Env) ->
-	ekaf_init([Env]),
+	brod_init([Env]),
     emqx:hook('client.connected', fun ?MODULE:on_client_connected/4, [Env]),
     emqx:hook('client.disconnected', fun ?MODULE:on_client_disconnected/3, [Env]),
     emqx:hook('message.publish', fun ?MODULE:on_message_publish/2, [Env]),
@@ -59,22 +56,17 @@ load(Env) ->
     % emqx:hook('session.unsubscribed', fun ?MODULE:on_session_unsubscribed/4, [Env]),
     % emqx:hook('session.terminated', fun ?MODULE:on_session_terminated/3, [Env]),
     
-
-ekaf_init(_Env) ->
-    {ok, BrokerValues} = application:get_env(emqx_kafka_bridge, broker),
-    KafkaHost = proplists:get_value(host, BrokerValues),
-    KafkaPort = proplists:get_value(port, BrokerValues),
-    KafkaPartitionStrategy= proplists:get_value(partitionstrategy, BrokerValues),
-    KafkaPartitionWorkers= proplists:get_value(partitionworkers, BrokerValues),
-    application:set_env(ekaf, ekaf_bootstrap_broker,  {KafkaHost, list_to_integer(KafkaPort)}),
-    application:set_env(ekaf, ekaf_partition_strategy, KafkaPartitionStrategy),
-    application:set_env(ekaf, ekaf_per_partition_workers, KafkaPartitionWorkers),
-    application:set_env(ekaf, ekaf_per_partition_workers_max, 100),
-    application:set_env(ekaf, ekaf_max_buffer_size, 1000),
-    application:set_env(ekaf, ekaf_buffer_ttl, 50000),
-    application:set_env(ekaf, ekaf_max_downtime_buffer_size, 50),
+brod_init(_Env) ->
     {ok, _} = application:ensure_all_started(gproc),
-    {ok, _} = application:ensure_all_started(ekaf).
+    {ok, _} = application:ensure_all_started(brod),
+    {ok, Kafka} = application:get_env(?MODULE, broker),
+    KafkaBootstrapHost = proplists:get_value(bootstrap_broker_host, Kafka),
+    KafkaBootstrapPort = proplists:get_value(bootstrap_broker_port, Kafka),
+    KafkaBootstrapEndpoints = [{KafkaBootstrapHost, KafkaBootstrapPort}], 
+    ClientConfig = [{auto_start_producers, true}, {default_producer_config, []}, {reconnect_cool_down_seconds, 10}, {reconnect_cool_down_seconds, 10}],
+    ok = brod:start_client(KafkaBootstrapEndpoints, brod_client_1, ClientConfig),
+    ok = brod:start_producer(brod_client_1, <<"message_publish">>, _ProducerConfig = []),
+    io:format("Init brod with ~p~n", [KafkaBootstrapEndpoints]).
 
 % on_client_subscribe(#{client_id := ClientId}, RawTopicFilters, _Env) ->
 %     io:format("Client(~s) will subscribe: ~p~n", [ClientId, RawTopicFilters]),
@@ -104,7 +96,7 @@ on_client_connected(#{client_id := ClientId, username := Username}, 0, _ConnInfo
               {clientid, ClientId},
               {username, Username},
               {result, 0}],
-    produce_kafka_message(<<"client_connected">>, Params, _Env),
+    produce_kafka_message(<<"client_connected">>, Params, ClientId, _Env),
     ok;
 on_client_connected(#{}, _ConnAck, _ConnInfo, _Env) ->
     ok.
@@ -119,12 +111,11 @@ on_client_disconnected(#{client_id := ClientId, username := Username}, Reason, _
               {clientid, ClientId},
               {username, Username},
               {reason, Reason}],
-    produce_kafka_message(<<"client_disconnected">>, Params, _Env),
+    produce_kafka_message(<<"client_disconnected">>, Params, ClientId, _Env),
     ok;
 on_client_disconnected(_, Reason, _Env) ->
     ?LOG(error, "Client disconnected, cannot encode reason: ~p", [Reason]),
     ok.
-
 
 on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
     {ok, Message};
@@ -135,7 +126,7 @@ on_message_publish(Message = #message{topic = Topic, from = From, headers = #{us
                 {username, Username},
                 {topic, Topic},
                 {payload, Message#message.payload}],
-    produce_kafka_message_async(<<"message_publish">>, Params, _Env),	
+    produce_kafka_message_async(<<"message_publish">>, Params, From, _Env),	
     {ok, Message}.
 
 on_message_delivered(#{client_id := ClientId}, Message, _Env) ->
@@ -145,7 +136,7 @@ on_message_delivered(#{client_id := ClientId}, Message, _Env) ->
         {clientid, ClientId},
         {message, emqx_message:format(Message)}
     ]),
-    produce_kafka_message_async(<<"message_published">>, jsx:encode(Params), _Env),
+    produce_kafka_message_async(<<"message_published">>, jsx:encode(Params), ClientId, _Env),
     {ok, Message}.
 
 on_message_acked(#{client_id := ClientId}, Message, _Env) ->
@@ -155,7 +146,7 @@ on_message_acked(#{client_id := ClientId}, Message, _Env) ->
         {clientid, ClientId},
         {message, emqx_message:format(Message)}
     ]),
-    produce_kafka_message_async(<<"message_acked">>, jsx:encode(Params), _Env),
+    produce_kafka_message_async(<<"message_acked">>, jsx:encode(Params), ClientId, _Env),
     {ok, Message}.
 
 % on_message_dropped(_By, #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
@@ -195,20 +186,35 @@ on_message_acked(#{client_id := ClientId}, Message, _Env) ->
 %     ok = ekaf:produce_async(list_to_binary(Topic), Payload),
 %     ok.
 
-produce_kafka_message(Topic, Message, _Env) ->
+produce_kafka_message(Topic, Message, ClientId, _Env) ->
+    Key = iolist_to_binary(ClientId),
+    Partition = getPartition(Key),
     Message1 = jsx:encode(Message),
     ?LOG(debug, "Topic:~p, params:~s", [Topic, Message1]),
-    ekaf:pick(Topic),
-    ekaf:produce_sync(Topic, Message1).
+    ok = brod:produce_sync(brod_client_1, Topic, Partition, ClientId, Message1),
+    ok.
 
-produce_kafka_message_async(Topic, Message, _Env) ->
+produce_kafka_message_async(Topic, Message, ClientId, _Env) ->
+    Key = iolist_to_binary(ClientId),
+    Partition = getPartition(Key),
     Message1 = jsx:encode(Message),
     ?LOG(debug, "Topic:~p, params:~s", [Topic, Message1]),
-    ekaf:pick(Topic),
-    ekaf:produce_async(Topic, Message1).
+    {ok, CallRef} = brod:produce(brod_client_1, Topic, Partition, ClientId, Message1),
+    receive
+        #brod_produce_reply{ call_ref = CallRef, result   = brod_produce_req_acked} -> ok
+    after 5000 ->
+        ct:fail({?MODULE, ?LINE, timeout})
+    end, 
+    {ok, Message}.
 
 a2b(A) when is_atom(A) -> erlang:atom_to_binary(A, utf8);
 a2b(A) -> A.
+
+getPartition(Key) ->
+    {ok, Kafka} = application:get_env(?MODULE, broker),
+    PartitionNum = proplists:get_value(producer_partition, Kafka),
+    <<Fix:120, Match:8>> = crypto:hash(md5, Key),
+    abs(Match) rem PartitionNum.
 
 %% Called when the plugin application stop
 unload() ->

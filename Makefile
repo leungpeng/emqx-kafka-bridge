@@ -2,9 +2,9 @@ PROJECT = emqx_kafka_bridge
 PROJECT_DESCRIPTION = EMQ X Kafka Bridge
 PROJECT_VERSION = 3.0
 
-DEPS = ekaf ecpool
-dep_ekaf = git https://github.com/helpshift/ekaf master
-dep_ecpool  = git-emqx https://github.com/emqx/ecpool v0.3.0
+DEPS = brod supervisor3
+dep_brod = git https://github.com/klarna/brod master
+dep_supervisor3  = git-emqx https://github.com/klarna/supervisor3 1.1.8
 
 BUILD_DEPS = emqx cuttlefish
 dep_emqx = git-emqx https://github.com/emqx/emqx emqx30
