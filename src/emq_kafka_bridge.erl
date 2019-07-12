@@ -62,7 +62,7 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId, usernam
                 {clientid, ClientId},
                 {username, Username},
                 {result, ConnAck},
-                {ts, emqttd_time:now_secs(Message#mqtt_message.timestamp)*1000}],
+                {ts, emqttd_time:now_ms()}],
     produce_kafka_log(Event),
     {ok, Client}.
 
@@ -72,7 +72,7 @@ on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, user
                 {clientid, ClientId},
                 {username, Username},
                 {result, Reason},
-                {ts, emqttd_time:now_secs(Message#mqtt_message.timestamp)*1000}],
+                {ts, emqttd_time:now_ms()}],
     produce_kafka_log(Event),
     ok.
 
@@ -164,7 +164,7 @@ format_payload(Message) ->
                   {username, Username},
                   {topic, Message#mqtt_message.topic},
                   {payload, Message#mqtt_message.payload},
-                  {ts, emqttd_time:now_secs(Message#mqtt_message.timestamp)*1000}],
+                  {ts, emqttd_time:now_ms()}],
     {ok, Payload}.
 
 format_from({ClientId, Username}) ->
